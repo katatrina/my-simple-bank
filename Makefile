@@ -16,4 +16,8 @@ migratedown:
 sqlc:
 	docker run --rm -v $(CURDIR):/src -w /src sqlc/sqlc generate
 
-.PHONY: postgres createdb dropdb migrateup migratedown sqlc
+## Run unit tests for all packages
+test:
+	go test -v -cover ./...
+
+.PHONY: postgres createdb dropdb migrateup migratedown sqlc test
