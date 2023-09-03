@@ -1,0 +1,1 @@
+This project is written again based on initial idea of [this repository](https://github.com/techschool/simplebank).
