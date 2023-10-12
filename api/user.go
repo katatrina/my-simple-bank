@@ -57,7 +57,7 @@ func (server *Server) creatUser(ctx *gin.Context) {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
 			switch pqErr.Code.Name() {
-			case "foreign_key_violation":
+			case "unique_violation":
 				ctx.JSON(http.StatusForbidden, errorResponse(err))
 				return
 			}
