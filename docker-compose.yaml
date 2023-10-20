@@ -1,0 +1,29 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:12-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=simple_bank
+      - POSTGRES_PASSWORD=secret
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # this env var will overwrite the value in app.env
+      - DB_SOURCE=postgresql://postgres:secret@postgres:5432/simple_bank?sslmode=disable
+    depends_on:
+      - postgres
+
+    #    ./wait-for host:port|url [-t timeout] [-- command args]
+    #    -q | --quiet                        Do not output any status messages
+    #    -t TIMEOUT | --timeout=timeout      Timeout in seconds, zero for no timeout
+    #    Defaults to 15 seconds
+    #    -v | --version                      Show the version of this tool
+    #    -- COMMAND ARGS                     Execute command with args after the test finishes
+    entrypoint: [ "/app/wait-for.sh", "postgres:5432", "--", "/app/start.sh" ]
+    command: ["/app/main"]
