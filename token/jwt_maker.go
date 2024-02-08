@@ -42,6 +42,7 @@ func (maker *JWTMaker) VerifyToken(token string) (*Payload, error) {
 		return []byte(maker.secretKey), nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
 	if err != nil {
+		// TODO: Handle error more gracefully
 		return nil, err
 	}
 
