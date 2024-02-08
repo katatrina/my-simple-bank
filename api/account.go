@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	db "github.com/katatrina/my-simple-bank/db/sqlc"
+	"github.com/katatrina/my-simple-bank/token"
 	"net/http"
 )
 
@@ -17,6 +18,15 @@ func (server *Server) createAccount(ctx *gin.Context) {
 	var req createAccountRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	// What happens if ctx.MustGet panics?
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
+	if req.Owner != authPayload.Subject {
+		err := errors.New("account owner must match authenticated user")
+		ctx.JSON(http.StatusUnprocessableEntity, errorResponse(err))
 		return
 	}
 
@@ -56,6 +66,13 @@ func (server *Server) getAccount(ctx *gin.Context) {
 		return
 	}
 
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	if account.Owner != authPayload.Subject {
+		err := errors.New("account does not belong to the authenticated user")
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, account)
 }
 
@@ -71,7 +88,10 @@ func (server *Server) listAccounts(ctx *gin.Context) {
 		return
 	}
 
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
 	arg := db.ListAccountsParams{
+		Owner:  authPayload.Subject,
 		Limit:  req.PageSize,
 		Offset: (req.PageID - 1) * req.PageSize,
 	}

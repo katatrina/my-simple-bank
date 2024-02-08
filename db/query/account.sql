@@ -5,7 +5,7 @@ INSERT INTO accounts ( owner, balance, currency ) VALUES ( $1, $2, $3 ) RETURNIN
 SELECT * FROM accounts WHERE id = $1 LIMIT 1;
 
 -- name: ListAccounts :many
-SELECT * FROM accounts ORDER BY id LIMIT $1 OFFSET $2;
+SELECT * FROM accounts WHERE owner = $1 ORDER BY id LIMIT $2 OFFSET $3;
 
 -- name: UpdateAccount :one
 UPDATE accounts SET balance = $1 WHERE id = $2 RETURNING *;
