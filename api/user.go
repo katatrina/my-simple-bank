@@ -1,103 +1,38 @@
 package api
 
 import (
-	"database/sql"
-	"errors"
 	"github.com/gin-gonic/gin"
-	db "github.com/katatrina/my-simple-bank/db/sqlc"
+	"github.com/katatrina/my-simple-bank/applayer"
 	"github.com/katatrina/my-simple-bank/util"
 	"net/http"
-	"time"
 )
 
-type createUserRequest struct {
-	Username string `json:"username" binding:"required,alphanum"`
-	Password string `json:"password" binding:"required,min=6"`
-	FullName string `json:"full_name" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-}
-
-type userResponse struct {
-	Username          string    `json:"username"`
-	FullName          string    `json:"full_name"`
-	Email             string    `json:"email"`
-	PasswordChangedAt time.Time `json:"password_changed_at"`
-	CreatedAt         time.Time `json:"created_at"`
-}
-
-func newUserResponse(user db.User) userResponse {
-	return userResponse{
-		Username:          user.Username,
-		FullName:          user.FullName,
-		Email:             user.Email,
-		PasswordChangedAt: user.PasswordChangedAt,
-		CreatedAt:         user.CreatedAt,
-	}
-}
-
-func (server *Server) createUser(ctx *gin.Context) {
-	var req createUserRequest
+func (server *HTTPServer) createUser(ctx *gin.Context) {
+	var req applayer.CreateUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, util.ErrorResponse(err))
 		return
 	}
 
-	passwordHashed, err := util.HashPassword(req.Password)
+	user, err := server.app.CreateUser(ctx, req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
-	arg := db.CreatUserParams{
-		Username:       req.Username,
-		HashedPassword: passwordHashed,
-		FullName:       req.FullName,
-		Email:          req.Email,
-	}
-
-	user, err := server.store.CreatUser(ctx, arg)
-	if err != nil {
-		// TODO: handle error more precisely
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
-	rsp := newUserResponse(user)
+	rsp := applayer.NewUserResponse(user)
 
 	ctx.JSON(http.StatusOK, rsp)
 }
 
-type loginUserRequest struct {
-	Username string `json:"username" binding:"required,alphanum"`
-	Password string `json:"password" binding:"required,min=6"`
-}
-
-type loginUserResponse struct {
-	AccessToken string       `json:"access_token"`
-	User        userResponse `json:"user"`
-}
-
-func (server *Server) loginUser(ctx *gin.Context) {
-	var req loginUserRequest
+func (server *HTTPServer) loginUser(ctx *gin.Context) {
+	var req applayer.LoginUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, util.ErrorResponse(err))
 		return
 	}
 
-	user, err := server.store.GetUser(ctx, req.Username)
+	user, err := server.app.LoginUser(ctx, req)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			ctx.JSON(http.StatusNotFound, errorResponse(err))
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
-	err = util.CheckPassword(req.Password, user.HashedPassword)
-	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
 		return
 	}
 
@@ -106,13 +41,13 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		server.config.AccessTokenDuration,
 	)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, util.ErrorResponse(err))
 		return
 	}
 
-	rsp := loginUserResponse{
+	rsp := applayer.LoginUserResponse{
 		AccessToken: accessToken,
-		User:        newUserResponse(user),
+		User:        applayer.NewUserResponse(user),
 	}
 	ctx.JSON(http.StatusOK, rsp)
 }

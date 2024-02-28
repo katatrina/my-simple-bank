@@ -3,11 +3,11 @@ package main
 import (
 	"database/sql"
 	"github.com/katatrina/my-simple-bank/api"
+	"github.com/katatrina/my-simple-bank/applayer"
 	db "github.com/katatrina/my-simple-bank/db/sqlc"
 	"github.com/katatrina/my-simple-bank/util"
-	"log"
-
 	_ "github.com/lib/pq"
+	"log"
 )
 
 func main() {
@@ -16,13 +16,14 @@ func main() {
 		log.Fatal("cannot load config: ", err)
 	}
 
-	conn, err := sql.Open(config.DBDriver, config.DBSource)
+	conn, err := connectDB(config.DBDriver, config.DBSource)
 	if err != nil {
 		log.Fatal("cannot connect to db: ", err)
 	}
 
 	store := db.NewStore(conn)
-	server, err := api.NewServer(store, config)
+	app := applayer.New(store)
+	server, err := api.NewHTTPServer(app, config)
 	if err != nil {
 		log.Fatal("cannot create server: ", err)
 	}
@@ -31,4 +32,17 @@ func main() {
 	if err != nil {
 		log.Fatal("cannot start server: ", err)
 	}
+}
+
+func connectDB(dbDriver, dbSource string) (*sql.DB, error) {
+	conn, err := sql.Open(dbDriver, dbSource)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = conn.Ping(); err != nil {
+		return nil, err
+	}
+
+	return conn, nil
 }

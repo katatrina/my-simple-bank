@@ -5,29 +5,29 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
-	db "github.com/katatrina/my-simple-bank/db/sqlc"
+	"github.com/katatrina/my-simple-bank/applayer"
 	"github.com/katatrina/my-simple-bank/token"
 	"github.com/katatrina/my-simple-bank/util"
 )
 
-// Server serves HTTP requests for our banking service.
-type Server struct {
+// HTTPServer serves HTTP requests for our banking service.
+type HTTPServer struct {
 	config     util.Config
-	store      db.Store
+	app        applayer.App
 	router     *gin.Engine
 	tokenMaker token.Maker
 }
 
-// NewServer creates a new HTTP server and sets up routing.
-func NewServer(store db.Store, config util.Config) (*Server, error) {
+// NewHTTPServer creates a new HTTP server and sets up routing.
+func NewHTTPServer(app applayer.App, config util.Config) (*HTTPServer, error) {
 	tokenMaker, err := token.NewJWTMaker(config.TokenSymmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)
 	}
 
-	server := &Server{
+	server := &HTTPServer{
 		config:     config,
-		store:      store,
+		app:        app,
 		tokenMaker: tokenMaker,
 	}
 
@@ -39,7 +39,7 @@ func NewServer(store db.Store, config util.Config) (*Server, error) {
 	return server, nil
 }
 
-func (server *Server) setupRouter() {
+func (server *HTTPServer) setupRouter() {
 	router := gin.Default()
 
 	router.POST("/users", server.createUser)
@@ -57,10 +57,6 @@ func (server *Server) setupRouter() {
 }
 
 // Start runs the HTTP server on a specific address.
-func (server *Server) Start(address string) error {
+func (server *HTTPServer) Start(address string) error {
 	return server.router.Run(address)
-}
-
-func errorResponse(err error) gin.H {
-	return gin.H{"error": err.Error()}
 }

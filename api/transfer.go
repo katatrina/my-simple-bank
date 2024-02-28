@@ -1,79 +1,26 @@
 package api
 
 import (
-	"database/sql"
-	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
-	db "github.com/katatrina/my-simple-bank/db/sqlc"
+	"github.com/katatrina/my-simple-bank/applayer"
 	"github.com/katatrina/my-simple-bank/token"
+	"github.com/katatrina/my-simple-bank/util"
 	"net/http"
 )
 
-type transferRequest struct {
-	FromAccountID int64  `json:"from_account_id" binding:"required,min=1"`
-	ToAccountID   int64  `json:"to_account_id" binding:"required,min=1"`
-	Amount        int64  `json:"amount" binding:"required,gt=0"`
-	Currency      string `json:"currency" binding:"required,currency"`
-}
-
-func (server *Server) makeTransfer(ctx *gin.Context) {
-	var req transferRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-
-	// Check if the from account exists and the currency is valid
-	fromAccount, valid := server.checkValidCurrency(ctx, req.FromAccountID, req.Currency)
-	if !valid {
-		return
-	}
-
+func (server *HTTPServer) makeTransfer(ctx *gin.Context) {
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
-	if fromAccount.Owner != authPayload.Subject {
-		err := errors.New("from account does not belong to the authenticated user")
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+
+	var req applayer.MoneyTransferRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, util.ErrorResponse(err))
 		return
 	}
 
-	_, valid = server.checkValidCurrency(ctx, req.ToAccountID, req.Currency)
-	if !valid {
-		return
-	}
-
-	arg := db.TransferTxParams{
-		FromAccountID: req.FromAccountID,
-		ToAccountID:   req.ToAccountID,
-		Amount:        req.Amount,
-	}
-
-	result, err := server.store.TransferTx(ctx, arg)
+	transfer, err := server.app.MakeMoneyTransfer(ctx, req, authPayload.Subject)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, result)
-}
-
-func (server *Server) checkValidCurrency(ctx *gin.Context, accountID int64, currency string) (db.Account, bool) {
-	account, err := server.store.GetAccount(ctx, accountID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			ctx.JSON(http.StatusNotFound, errorResponse(err))
-			return account, false
-		}
-
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return account, false
-	}
-
-	if account.Currency != currency {
-		err := fmt.Errorf("account with ID [%d] has currency mismatch: %s vs %s", account.ID, account.Currency, currency)
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return account, false
-	}
-
-	return account, true
+	ctx.JSON(http.StatusOK, transfer)
 }

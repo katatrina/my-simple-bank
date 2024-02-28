@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/katatrina/my-simple-bank/token"
+	"github.com/katatrina/my-simple-bank/util"
 	"net/http"
 	"strings"
 )
@@ -20,7 +21,7 @@ func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 		authorizationHeader := ctx.GetHeader(authorizationHeaderKey)
 		if len(authorizationHeader) == 0 {
 			err := errors.New("authorization header is not provided")
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, util.ErrorResponse(err))
 			return
 		}
 
@@ -28,7 +29,7 @@ func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 		fields := strings.Fields(authorizationHeader)
 		if len(fields) != 2 {
 			err := errors.New("invalid authorization header")
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, util.ErrorResponse(err))
 			return
 		}
 
@@ -36,7 +37,7 @@ func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 		authorizationType := strings.ToLower(fields[0])
 		if authorizationType != authorizationTypeBearer {
 			err := fmt.Errorf("unsupported authorization type %s", authorizationType)
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, util.ErrorResponse(err))
 			return
 		}
 
@@ -44,7 +45,7 @@ func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 		accessToken := fields[1]
 		payload, err := tokenMaker.VerifyToken(accessToken)
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, util.ErrorResponse(err))
 			return
 		}
 
