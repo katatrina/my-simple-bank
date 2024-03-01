@@ -17,7 +17,7 @@ type CreateUserRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 }
 
-type UserResponse struct {
+type CreateUserResponse struct {
 	Username          string    `json:"username"`
 	FullName          string    `json:"full_name"`
 	Email             string    `json:"email"`
@@ -25,8 +25,8 @@ type UserResponse struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
-func NewUserResponse(user db.User) UserResponse {
-	return UserResponse{
+func NewCreateUserResponse(user db.User) CreateUserResponse {
+	return CreateUserResponse{
 		Username:          user.Username,
 		FullName:          user.FullName,
 		Email:             user.Email,
@@ -35,11 +35,11 @@ func NewUserResponse(user db.User) UserResponse {
 	}
 }
 
-func (app *app) CreateUser(ctx *gin.Context, req CreateUserRequest) (db.User, error) {
+func (app *app) CreateUser(ctx *gin.Context, req CreateUserRequest) (CreateUserResponse, error) {
 	passwordHashed, err := util.HashPassword(req.Password)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, util.ErrorResponse(err))
-		return db.User{}, err
+		return CreateUserResponse{}, err
 	}
 
 	arg := db.CreatUserParams{
@@ -52,10 +52,12 @@ func (app *app) CreateUser(ctx *gin.Context, req CreateUserRequest) (db.User, er
 	user, err := app.store.CreatUser(ctx, arg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, util.ErrorResponse(err))
-		return db.User{}, err
+		return CreateUserResponse{}, err
 	}
 
-	return user, nil
+	rsp := NewCreateUserResponse(user)
+
+	return rsp, nil
 }
 
 type LoginUserRequest struct {
@@ -64,11 +66,11 @@ type LoginUserRequest struct {
 }
 
 type LoginUserResponse struct {
-	AccessToken string       `json:"access_token"`
-	User        UserResponse `json:"user"`
+	AccessToken string             `json:"access_token"`
+	User        CreateUserResponse `json:"user"`
 }
 
-func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (db.User, error) {
+func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (LoginUserResponse, error) {
 	user, err := app.store.GetUser(ctx, req.Username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -77,14 +79,28 @@ func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (db.User, erro
 			ctx.JSON(http.StatusInternalServerError, util.ErrorResponse(err))
 		}
 
-		return db.User{}, err
+		return LoginUserResponse{}, err
 	}
 
 	err = util.CheckPassword(req.Password, user.HashedPassword)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, util.ErrorResponse(err))
-		return db.User{}, err
+		return LoginUserResponse{}, err
 	}
 
-	return user, nil
+	accessToken, err := app.tokenMaker.CreateToken(
+		user.Username,
+		app.config.AccessTokenDuration,
+	)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, util.ErrorResponse(err))
+		return LoginUserResponse{}, err
+	}
+
+	rsp := LoginUserResponse{
+		AccessToken: accessToken,
+		User:        NewCreateUserResponse(user),
+	}
+
+	return rsp, nil
 }

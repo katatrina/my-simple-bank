@@ -5,6 +5,7 @@ import (
 	"github.com/katatrina/my-simple-bank/api"
 	"github.com/katatrina/my-simple-bank/applayer"
 	db "github.com/katatrina/my-simple-bank/db/sqlc"
+	"github.com/katatrina/my-simple-bank/token"
 	"github.com/katatrina/my-simple-bank/util"
 	_ "github.com/lib/pq"
 	"log"
@@ -22,8 +23,15 @@ func main() {
 	}
 
 	store := db.NewStore(conn)
-	app := applayer.New(store)
-	server, err := api.NewHTTPServer(app, config)
+
+	jwt, err := token.NewJWTMaker(config.TokenSymmetricKey)
+	if err != nil {
+		log.Fatal("cannot create token maker: ", err)
+	}
+
+	app := applayer.New(store, jwt, config)
+
+	server, err := api.NewHTTPServer(app, config, jwt)
 	if err != nil {
 		log.Fatal("cannot create server: ", err)
 	}

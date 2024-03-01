@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
@@ -19,12 +18,7 @@ type HTTPServer struct {
 }
 
 // NewHTTPServer creates a new HTTP server and sets up routing.
-func NewHTTPServer(app applayer.App, config util.Config) (*HTTPServer, error) {
-	tokenMaker, err := token.NewJWTMaker(config.TokenSymmetricKey)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create token maker: %w", err)
-	}
-
+func NewHTTPServer(app applayer.App, config util.Config, tokenMaker token.Maker) (*HTTPServer, error) {
 	server := &HTTPServer{
 		config:     config,
 		app:        app,

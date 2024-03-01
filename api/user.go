@@ -14,14 +14,12 @@ func (server *HTTPServer) createUser(ctx *gin.Context) {
 		return
 	}
 
-	user, err := server.app.CreateUser(ctx, req)
+	userResponse, err := server.app.CreateUser(ctx, req)
 	if err != nil {
 		return
 	}
 
-	rsp := applayer.NewUserResponse(user)
-
-	ctx.JSON(http.StatusOK, rsp)
+	ctx.JSON(http.StatusOK, userResponse)
 }
 
 func (server *HTTPServer) loginUser(ctx *gin.Context) {
@@ -31,23 +29,10 @@ func (server *HTTPServer) loginUser(ctx *gin.Context) {
 		return
 	}
 
-	user, err := server.app.LoginUser(ctx, req)
+	loginUserResponse, err := server.app.LoginUser(ctx, req)
 	if err != nil {
 		return
 	}
 
-	accessToken, err := server.tokenMaker.CreateToken(
-		user.Username,
-		server.config.AccessTokenDuration,
-	)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, util.ErrorResponse(err))
-		return
-	}
-
-	rsp := applayer.LoginUserResponse{
-		AccessToken: accessToken,
-		User:        applayer.NewUserResponse(user),
-	}
-	ctx.JSON(http.StatusOK, rsp)
+	ctx.JSON(http.StatusOK, loginUserResponse)
 }
