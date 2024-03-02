@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 
 	testQueries = New(testDB)
 
-	testStore = NewStore(testDB)
+	testStore = NewSQLStore(testDB)
 
 	os.Exit(m.Run())
 }

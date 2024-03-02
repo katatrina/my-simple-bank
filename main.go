@@ -22,7 +22,7 @@ func main() {
 		log.Fatal("cannot connect to db: ", err)
 	}
 
-	store := db.NewStore(conn)
+	store := db.NewSQLStore(conn)
 
 	jwt, err := token.NewJWTMaker(config.TokenSymmetricKey)
 	if err != nil {

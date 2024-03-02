@@ -16,11 +16,19 @@ type SQLStore struct {
 	db *sql.DB
 }
 
-func NewStore(db *sql.DB) *SQLStore {
-	return &SQLStore{
-		db:      db,
-		Queries: New(db),
+var (
+	sqlStore *SQLStore
+)
+
+func NewSQLStore(db *sql.DB) *SQLStore {
+	if sqlStore == nil {
+		sqlStore = &SQLStore{
+			db:      db,
+			Queries: New(db),
+		}
 	}
+
+	return sqlStore
 }
 
 // execTx executes a function within a database transaction.
