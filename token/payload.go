@@ -8,6 +8,7 @@ import (
 
 // Payload contains the payload data of the token.
 type Payload struct {
+	ID uuid.UUID `json:"jti,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -19,6 +20,7 @@ func NewPayload(username string, duration time.Duration) (*Payload, error) {
 	}
 
 	payload := &Payload{
+		tokenID,
 		jwt.RegisteredClaims{
 			Issuer:    "simplebank",
 			Subject:   username,
@@ -26,7 +28,6 @@ func NewPayload(username string, duration time.Duration) (*Payload, error) {
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ID:        tokenID.String(),
 		},
 	}
 

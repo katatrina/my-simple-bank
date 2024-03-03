@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	db "github.com/katatrina/my-simple-bank/db/sqlc"
 	"github.com/katatrina/my-simple-bank/util"
 	"net/http"
@@ -25,7 +26,7 @@ type CreateUserResponse struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
-func NewCreateUserResponse(user db.User) CreateUserResponse {
+func NewUserResponse(user db.User) CreateUserResponse {
 	return CreateUserResponse{
 		Username:          user.Username,
 		FullName:          user.FullName,
@@ -55,7 +56,7 @@ func (app *app) CreateUser(ctx *gin.Context, req CreateUserRequest) (CreateUserR
 		return CreateUserResponse{}, err
 	}
 
-	rsp := NewCreateUserResponse(user)
+	rsp := NewUserResponse(user)
 
 	return rsp, nil
 }
@@ -66,8 +67,12 @@ type LoginUserRequest struct {
 }
 
 type LoginUserResponse struct {
-	AccessToken string             `json:"access_token"`
-	User        CreateUserResponse `json:"user"`
+	SessionID             uuid.UUID          `json:"session_id"`
+	AccessToken           string             `json:"access_token"`
+	AccessTokenExpiresAt  time.Time          `json:"access_token_expires_at"`
+	RefreshToken          string             `json:"refresh_token"`
+	RefreshTokenExpiresAt time.Time          `json:"refresh_token_expires_at"`
+	User                  CreateUserResponse `json:"user"`
 }
 
 func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (LoginUserResponse, error) {
@@ -88,7 +93,7 @@ func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (LoginUserResp
 		return LoginUserResponse{}, err
 	}
 
-	accessToken, err := app.tokenMaker.CreateToken(
+	accessToken, accessPayload, err := app.tokenMaker.CreateToken(
 		user.Username,
 		app.config.AccessTokenDuration,
 	)
@@ -97,9 +102,36 @@ func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (LoginUserResp
 		return LoginUserResponse{}, err
 	}
 
+	refreshToken, refreshPayload, err := app.tokenMaker.CreateToken(
+		user.Username,
+		app.config.RefreshTokenDuration,
+	)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, util.ErrorResponse(err))
+		return LoginUserResponse{}, err
+	}
+
+	session, err := app.store.CreateSession(ctx, db.CreateSessionParams{
+		ID:           refreshPayload.ID,
+		Username:     user.Username,
+		RefreshToken: refreshToken,
+		UserAgent:    ctx.GetHeader("User-Agent"),
+		ClientIp:     ctx.ClientIP(),
+		IsBlocked:    false,
+		ExpiresAt:    refreshPayload.ExpiresAt.Time,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, util.ErrorResponse(err))
+		return LoginUserResponse{}, err
+	}
+
 	rsp := LoginUserResponse{
-		AccessToken: accessToken,
-		User:        NewCreateUserResponse(user),
+		SessionID:             session.ID,
+		AccessToken:           accessToken,
+		AccessTokenExpiresAt:  accessPayload.ExpiresAt.Time,
+		RefreshToken:          refreshToken,
+		RefreshTokenExpiresAt: refreshPayload.ExpiresAt.Time,
+		User:                  NewUserResponse(user),
 	}
 
 	return rsp, nil
