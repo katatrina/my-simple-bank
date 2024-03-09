@@ -7,14 +7,14 @@ import (
 	"net/http"
 )
 
-func (server *HTTPServer) renewAccessToken(ctx *gin.Context) {
-	var req applayer.RenewAccessTokenRequest
+func (server *HTTPServer) issueNewAccessToken(ctx *gin.Context) {
+	var req applayer.IssueNewAccessTokenRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, util.ErrorResponse(err))
 		return
 	}
 
-	rsp, err := server.app.RenewAccessToken(ctx, req)
+	rsp, err := server.app.IssueNewAccessToken(ctx, req)
 	if err != nil {
 		return
 	}

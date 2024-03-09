@@ -76,6 +76,7 @@ type LoginUserResponse struct {
 }
 
 func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (LoginUserResponse, error) {
+	// Find the user in the database based on the username in the request
 	user, err := app.store.GetUser(ctx, req.Username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -87,12 +88,14 @@ func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (LoginUserResp
 		return LoginUserResponse{}, err
 	}
 
+	// Compare the password in the request with the hashed password in the database
 	err = util.CheckPassword(req.Password, user.HashedPassword)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, util.ErrorResponse(err))
 		return LoginUserResponse{}, err
 	}
 
+	// Create a new access token
 	accessToken, accessPayload, err := app.tokenMaker.CreateToken(
 		user.Username,
 		app.config.AccessTokenDuration,
@@ -102,6 +105,7 @@ func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (LoginUserResp
 		return LoginUserResponse{}, err
 	}
 
+	// Create a new refresh token
 	refreshToken, refreshPayload, err := app.tokenMaker.CreateToken(
 		user.Username,
 		app.config.RefreshTokenDuration,
@@ -111,6 +115,7 @@ func (app *app) LoginUser(ctx *gin.Context, req LoginUserRequest) (LoginUserResp
 		return LoginUserResponse{}, err
 	}
 
+	// Save the refresh token in the "sessions" table in the database
 	session, err := app.store.CreateSession(ctx, db.CreateSessionParams{
 		ID:           refreshPayload.ID,
 		Username:     user.Username,

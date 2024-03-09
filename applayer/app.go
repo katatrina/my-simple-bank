@@ -14,7 +14,7 @@ type App interface {
 	GetAccount(ctx *gin.Context, req GetAccountRequest) (db.Account, error)
 	ListAccounts(ctx *gin.Context, req ListAccountsRequest, owner string) ([]db.Account, error)
 	MakeMoneyTransfer(ctx *gin.Context, req MoneyTransferRequest, authenticatedOwner string) (db.TransferTxResult, error)
-	RenewAccessToken(ctx *gin.Context, req RenewAccessTokenRequest) (RenewAccessTokenResponse, error)
+	IssueNewAccessToken(ctx *gin.Context, req IssueNewAccessTokenRequest) (IssueNewAccessTokenResponse, error)
 }
 
 type app struct {

@@ -8,7 +8,7 @@ import (
 
 // Payload contains the payload data of the token.
 type Payload struct {
-	ID uuid.UUID `json:"jti,omitempty"`
+	ID uuid.UUID `json:"jti,omitempty"` // This field shadows the ID field in the RegisteredClaims struct
 	jwt.RegisteredClaims
 }
 

@@ -48,7 +48,7 @@ func (maker *JWTMaker) VerifyToken(token string) (*Payload, error) {
 		return nil, err
 	}
 
-	// Check if the token is
+	// Try to get the payload from the token
 	payload, ok := jwtToken.Claims.(*Payload)
 	if !ok {
 		return nil, fmt.Errorf("invalid token claims")
