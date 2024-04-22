@@ -29,7 +29,7 @@ func RandomOwner() string {
 	return RandomString(6)
 }
 
-// RandomMoney returns a random amount of money.
+// RandomMoney returns a random amount of money between 0 and 1000.
 func RandomMoney() int64 {
 	return RandomInt(0, 1000)
 }
