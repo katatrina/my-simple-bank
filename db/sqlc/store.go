@@ -20,19 +20,21 @@ func NewStore(db *sql.DB) Store {
 }
 
 // execTx executes a series of queries inside a database transaction.
-func (store *Store) execTx(ctx context.Context, fn func(queries *Queries) error) error {
+func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
 	tx, err := store.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	qtx := store.WithTx(tx)
+	qtx := New(tx)
 
 	err = fn(qtx)
 	if err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
 			return fmt.Errorf("tx error: %v, rollback error: %w", err, rbErr)
 		}
+
+		return err
 	}
 
 	return tx.Commit()
@@ -57,8 +59,9 @@ type TransferMoneyResult struct {
 func (store *Store) TransferMoneyTx(ctx context.Context, arg TransferMoneyParams) (TransferMoneyResult, error) {
 	var result TransferMoneyResult
 
-	err := store.execTx(ctx, func(q *Queries) error {
-		transfer, err := q.CreateTransfer(ctx, CreateTransferParams{
+	err := store.execTx(ctx, func(qtx *Queries) error {
+		// create transfer record
+		transfer, err := qtx.CreateTransfer(ctx, CreateTransferParams{
 			FromAccountID: arg.FromAccountID,
 			ToAccountID:   arg.ToAccountID,
 			Amount:        arg.Amount,
@@ -68,7 +71,8 @@ func (store *Store) TransferMoneyTx(ctx context.Context, arg TransferMoneyParams
 		}
 		result.Transfer = transfer
 
-		fromEntry, err := q.CreateEntry(ctx, CreateEntryParams{
+		// create account entries
+		fromEntry, err := qtx.CreateEntry(ctx, CreateEntryParams{
 			AccountID: arg.FromAccountID,
 			Amount:    -arg.Amount,
 		})
@@ -77,7 +81,7 @@ func (store *Store) TransferMoneyTx(ctx context.Context, arg TransferMoneyParams
 		}
 		result.FromEntry = fromEntry
 
-		toEntry, err := q.CreateEntry(ctx, CreateEntryParams{
+		toEntry, err := qtx.CreateEntry(ctx, CreateEntryParams{
 			AccountID: arg.ToAccountID,
 			Amount:    arg.Amount,
 		})
@@ -86,7 +90,25 @@ func (store *Store) TransferMoneyTx(ctx context.Context, arg TransferMoneyParams
 		}
 		result.ToEntry = toEntry
 
-		// TODO: update accounts balance
+		// Update account balances
+		fromAccount, err := qtx.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.FromAccountID,
+			Amount: -arg.Amount,
+		})
+		if err != nil {
+			return err
+		}
+		result.FromAccount = fromAccount
+
+		toAccount, err := qtx.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.ToAccountID,
+			Amount: arg.Amount,
+		})
+		if err != nil {
+			return err
+		}
+		result.ToAccount = toAccount
+
 		return nil
 	})
 
