@@ -89,3 +89,5 @@ func (server *Server) listAccounts(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, accounts)
 }
+
+// TODO: update account balance and delete account api
