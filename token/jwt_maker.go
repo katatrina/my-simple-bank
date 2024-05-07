@@ -47,7 +47,7 @@ func (maker *JWTMaker) VerifyToken(token string) (*jwt.RegisteredClaims, error) 
 		return []byte(maker.secretKey), nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid access token: %w", err)
 	}
 
 	claims, ok := jwtToken.Claims.(*jwt.RegisteredClaims)
