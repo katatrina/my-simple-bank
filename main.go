@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 
 	"github.com/katatrina/my-simple-bank/api"
@@ -28,9 +27,12 @@ func main() {
 	}
 
 	store := db.NewStore(conn)
-	server := api.NewServer(store)
+	server, err := api.NewServer(config, store)
+	if err != nil {
+		log.Fatal("cannot create server")
+	}
+
 	err = server.Start(config.ServerAddress)
-	fmt.Println(config)
 	if err != nil {
 		log.Fatal("cannot start server:", err)
 	}
