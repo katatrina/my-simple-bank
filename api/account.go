@@ -6,12 +6,12 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	db "github.com/katatrina/my-simple-bank/db/sqlc"
 	"github.com/lib/pq"
 )
 
 type createAccountRequest struct {
-	Owner    string `json:"owner" binding:"required"`
 	Currency string `json:"currency" binding:"required,currency"`
 }
 
@@ -23,8 +23,10 @@ func (server *Server) createAccount(ctx *gin.Context) {
 		return
 	}
 
+	authorizedPayload := ctx.MustGet(authorizationPayloadKey).(*jwt.RegisteredClaims)
+
 	arg := db.CreateAccountParams{
-		Owner:    req.Owner,
+		Owner:    authorizedPayload.Subject,
 		Balance:  0,
 		Currency: req.Currency,
 	}
@@ -70,6 +72,13 @@ func (server *Server) getAccount(ctx *gin.Context) {
 		return
 	}
 
+	authorizedPayload := ctx.MustGet(authorizationPayloadKey).(*jwt.RegisteredClaims)
+	if account.Owner != authorizedPayload.Subject {
+		err = errors.New("accounts doesn't belong to the authenticated user")
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, account)
 }
 
@@ -86,12 +95,15 @@ func (server *Server) listAccounts(ctx *gin.Context) {
 		return
 	}
 
-	arg := db.ListAccountsParams{
+	authorizedPayload := ctx.MustGet(authorizationPayloadKey).(*jwt.RegisteredClaims)
+
+	arg := db.ListAccountsByOwnerParams{
+		Owner:  authorizedPayload.Subject,
 		Limit:  req.PageSize,
 		Offset: req.PageSize * (req.PageID - 1),
 	}
 
-	accounts, err := server.store.ListAccounts(ctx, arg)
+	accounts, err := server.store.ListAccountsByOwner(ctx, arg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return

@@ -10,13 +10,15 @@ WHERE id = $1;
 -- name: GetAccountForUpdate :one
 SELECT *
 FROM accounts
-WHERE id = $1 FOR NO KEY UPDATE;
+WHERE id = $1 FOR NO KEY
+UPDATE;
 
--- name: ListAccounts :many
+-- name: ListAccountsByOwner :many
 SELECT *
 FROM accounts
-ORDER BY id ASC LIMIT $1
-OFFSET $2;
+WHERE owner = $1
+ORDER BY id ASC LIMIT $2
+OFFSET $3;
 
 -- name: UpdateAccountBalance :one
 UPDATE accounts
