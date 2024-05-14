@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -23,13 +24,13 @@ func NewJWTMaker(secretKey string) (Maker, error) {
 	return &JWTMaker{secretKey}, nil
 }
 
-func (maker *JWTMaker) CreateToken(username string, duration time.Duration) (string, error) {
+func (maker *JWTMaker) CreateToken(username string, duration time.Duration) (string, *jwt.RegisteredClaims, error) {
 	tokenID, err := uuid.NewRandom()
 	if err != nil {
-		return "", fmt.Errorf("cannot create token ID: %w", err)
+		return "", nil, fmt.Errorf("cannot create token ID: %w", err)
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+	claims := jwt.RegisteredClaims{
 		Issuer:    "simple_bank",
 		Subject:   username,
 		Audience:  jwt.ClaimStrings{"client"},
@@ -37,9 +38,15 @@ func (maker *JWTMaker) CreateToken(username string, duration time.Duration) (str
 		NotBefore: jwt.NewNumericDate(time.Now()),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		ID:        tokenID.String(),
-	})
+	}
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return token.SignedString([]byte(maker.secretKey))
+	token, err := jwtToken.SignedString([]byte(maker.secretKey))
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot sign token: %w", err)
+	}
+
+	return token, &claims, nil
 }
 
 func (maker *JWTMaker) VerifyToken(token string) (*jwt.RegisteredClaims, error) {
@@ -47,7 +54,12 @@ func (maker *JWTMaker) VerifyToken(token string) (*jwt.RegisteredClaims, error) 
 		return []byte(maker.secretKey), nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, jwt.ErrTokenExpired):
+			return nil, fmt.Errorf("token is expired")
+		default:
+			return nil, fmt.Errorf("token is invalid")
+		}
 	}
 
 	claims, ok := jwtToken.Claims.(*jwt.RegisteredClaims)
