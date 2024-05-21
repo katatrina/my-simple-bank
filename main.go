@@ -10,6 +10,18 @@ import (
 	_ "github.com/lib/pq"
 )
 
+//	@title			Simple Bank API
+
+//	@contact.name Châu Vĩnh Phước
+//	@contact.email	cvphuoc2014@gmail.com
+
+//	@host		localhost:8080
+
+//	@securityDefinitions.apiKey		accessToken
+//	@in								header
+//	@name							Authorization
+//	@description			    	JWT Authorization header using the Bearer scheme.
+
 func main() {
 	config, err := util.LoadConfig("config.env")
 	if err != nil {

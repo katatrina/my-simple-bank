@@ -10,6 +10,10 @@ import (
 	db "github.com/katatrina/my-simple-bank/db/sqlc"
 	"github.com/katatrina/my-simple-bank/token"
 	"github.com/katatrina/my-simple-bank/util"
+
+	_ "github.com/katatrina/my-simple-bank/docs"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // Server serves HTTP requests for our banking service.
@@ -19,6 +23,8 @@ type Server struct {
 	tokenMaker token.Maker
 	router     *gin.Engine
 }
+
+type errorResponse map[string]any
 
 // NewServer creates a new HTTP server and set up routing.
 func NewServer(config util.Config, store db.Store) (*Server, error) {
@@ -45,6 +51,8 @@ func (server *Server) setupRouter() {
 	router := gin.Default()
 	router.Use(cors.Default())
 
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	router.POST("/users", server.createUser)
 	router.POST("/users/login", server.loginUser)
 	router.POST("/tokens/renew_access", server.renewAccessToken)
@@ -65,6 +73,6 @@ func (server *Server) Start(address string) error {
 	return server.router.Run(address)
 }
 
-func errorResponse(err error) gin.H {
-	return gin.H{"error": err.Error()}
+func newErrorResponse(err error) errorResponse {
+	return errorResponse{"error": err.Error()}
 }

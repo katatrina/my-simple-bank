@@ -22,7 +22,7 @@ func (server *Server) makeMoneyTransfer(ctx *gin.Context) {
 	var req makeMoneyTransferRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, newErrorResponse(err))
 		return
 	}
 
@@ -35,7 +35,7 @@ func (server *Server) makeMoneyTransfer(ctx *gin.Context) {
 	authorizedPayload := ctx.MustGet(authorizationPayloadKey).(*jwt.RegisteredClaims)
 	if fromAccount.Owner != authorizedPayload.Subject {
 		err := errors.New("from account doesn't belong to the authenticated user")
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		ctx.JSON(http.StatusUnauthorized, newErrorResponse(err))
 		return
 	}
 
@@ -52,7 +52,7 @@ func (server *Server) makeMoneyTransfer(ctx *gin.Context) {
 
 	result, err := server.store.TransferMoneyTx(ctx, arg)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, newErrorResponse(err))
 		return
 	}
 
@@ -63,17 +63,17 @@ func (server *Server) validAccount(ctx *gin.Context, accountID int64, currency s
 	account, err := server.store.GetAccount(ctx, accountID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			ctx.JSON(http.StatusNotFound, errorResponse(err))
+			ctx.JSON(http.StatusNotFound, newErrorResponse(err))
 			return account, false
 		}
 
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, newErrorResponse(err))
 		return account, false
 	}
 
 	if account.Currency != currency {
 		err = fmt.Errorf("account with ID %d has currency %s, not the expected currency %s", account.ID, account.Currency, currency)
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, newErrorResponse(err))
 		return account, false
 	}
 

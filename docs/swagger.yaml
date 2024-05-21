@@ -1,0 +1,93 @@
+definitions:
+  api.createAccountRequest:
+    properties:
+      currency:
+        type: string
+    required:
+    - currency
+    type: object
+  api.createUserRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - full_name
+    - password
+    - username
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: cvphuoc2014@gmail.com
+    name: Châu Vĩnh Phước
+  title: Simple Bank API
+paths:
+  /accounts:
+    post:
+      consumes:
+      - application/json
+      description: Create by json account
+      parameters:
+      - description: Account info
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/api.createAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - bearerToken: []
+      summary: Create a new account
+      tags:
+      - accounts
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Create by json user
+      parameters:
+      - description: User info
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api.createUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Create a new user
+      tags:
+      - users
+securityDefinitions:
+  accessToken:
+    description: JWT Authorization header using the Bearer scheme.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

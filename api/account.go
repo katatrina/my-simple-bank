@@ -15,11 +15,25 @@ type createAccountRequest struct {
 	Currency string `json:"currency" binding:"required,currency"`
 }
 
+// createAccount creates a new account.
+//
+//		 	@Router  		/accounts [post]
+//			@Summary		Create a new account
+//			@Description	Create by json account
+//	     @Security		bearerToken
+//			@Tags			accounts
+//			@Accept			json
+//			@Produce		json
+//			@Param			account	body		createAccountRequest	true "Account info"
+//			@Success		201
+//			@Failure		400
+//			@Failure		404
+//			@Failure		500
 func (server *Server) createAccount(ctx *gin.Context) {
 	var req createAccountRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, newErrorResponse(err))
 		return
 	}
 
@@ -37,12 +51,12 @@ func (server *Server) createAccount(ctx *gin.Context) {
 		if errors.As(err, &pqErr) {
 			switch pqErr.Code.Name() {
 			case "foreign_key_violation", "unique_violation":
-				ctx.JSON(http.StatusForbidden, errorResponse(pqErr))
+				ctx.JSON(http.StatusForbidden, newErrorResponse(pqErr))
 				return
 			}
 		}
 
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, newErrorResponse(err))
 		return
 	}
 
@@ -57,25 +71,25 @@ func (server *Server) getAccount(ctx *gin.Context) {
 	var req getAccountRequest
 
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, newErrorResponse(err))
 		return
 	}
 
 	account, err := server.store.GetAccount(ctx, req.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			ctx.JSON(http.StatusNotFound, errorResponse(err))
+			ctx.JSON(http.StatusNotFound, newErrorResponse(err))
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, newErrorResponse(err))
 		return
 	}
 
 	authorizedPayload := ctx.MustGet(authorizationPayloadKey).(*jwt.RegisteredClaims)
 	if account.Owner != authorizedPayload.Subject {
 		err = errors.New("accounts doesn't belong to the authenticated user")
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		ctx.JSON(http.StatusUnauthorized, newErrorResponse(err))
 		return
 	}
 
@@ -91,7 +105,7 @@ func (server *Server) listAccounts(ctx *gin.Context) {
 	var req listAccountsRequest
 
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, newErrorResponse(err))
 		return
 	}
 
@@ -105,7 +119,7 @@ func (server *Server) listAccounts(ctx *gin.Context) {
 
 	accounts, err := server.store.ListAccountsByOwner(ctx, arg)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, newErrorResponse(err))
 		return
 	}
 
